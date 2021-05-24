@@ -1,0 +1,28 @@
+version: '2.3'
+
+networks:
+    network:
+        driver: bridge
+
+services:
+    backend:
+        build:
+            context: $PWD/backend
+            dockerfile: $PWD/Dockerfile-backend
+        ports:
+            - 7100:5000
+        restart: always
+        networks:
+            - network
+
+    frontend:
+        build:
+            context: $PWD/frontend
+            dockerfile: $PWD/Dockerfile-frontend
+        ports:
+            - 7101:80
+        links:
+            - backend
+        restart: always
+        networks:
+            - network

@@ -1,0 +1,23 @@
+FROM python:3.8-slim-buster as build-env
+WORKDIR /app
+COPY ./requirements-common.txt ./requirements-prod.txt ./
+RUN pip install --upgrade pip \
+    && mkdir wheels \
+    && pip wheel --wheel-dir=wheels -r requirements-prod.txt \
+    && apt-get update \
+    && apt-get install libtcmalloc-minimal4
+
+FROM python:3.8-slim-buster as production-env
+WORKDIR /app
+COPY --from=build-env /app ./
+COPY --from=build-env /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
+RUN pip install -U pip \
+    && pip install -r requirements-prod.txt \
+                   -f wheels \
+    && rm -rf *
+COPY /src ./src/
+ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
+ENV PROFILE=production
+ENV PYTHONUNBUFFERED=TRUE
+EXPOSE 5000
+ENTRYPOINT ["gunicorn", "-w", "1", "-b", "0.0.0.0:5500", "-t", "99999", "--chdir", "./src", "client"]

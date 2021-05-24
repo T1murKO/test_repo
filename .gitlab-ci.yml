@@ -1,0 +1,42 @@
+stages:
+  - deploy
+  - test
+
+include:
+  - template: Code-Quality.gitlab-ci.yml
+
+deploy:
+  stage: deploy
+  tags:
+    - local
+  image: docker:18.09.8-dind
+  variables:
+    PROD_HOST: "10.10.94.71:2375"
+  before_script:
+    - apk add git openssl docker-compose
+  script:
+    - docker-compose -H $PROD_HOST -f docker-compose.yml up -d --build
+  only:
+    - master
+
+code_quality:
+  stage: test
+  variables:
+#    SOURCE_CODE: "$PWD/backend"
+    CODE_QUALITY_IMAGE: "registry.gitlab.com/gitlab-org/ci-cd/codequality:latest"
+  before_script:
+    - cd backend
+  artifacts:
+    paths: [gl-code-quality-repoort.json]
+
+test:
+  stage: test
+  image: python:3.8
+  script:
+    - apt-get update -q -y
+    - cd backend
+    - pip install -r requirements-test.txt
+    - export PROFILE=test
+    - nosetests -v --nocapture
+  only:
+    - merge_requests
